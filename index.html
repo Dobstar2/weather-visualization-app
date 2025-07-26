@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Real‑Time Weather Visualization</title>
+  <!-- Stylesheets and manifest are embedded below; nothing external is required -->
+  <!-- Leaflet styles and script via CDN for map integration -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha512-sA+7gUx24uYsb4o9usgzZ+dNPbh0hr7HBjAqfjcI+g2Jr/EUj8unXZlZBj6wP0B4XksgIp4No20/gkG6o1nNQ=="
+    crossorigin=""
+  />
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha512-v6bQ+PyD1fc1N7Zw3WG2U+Z9/qHiK2SWc5W9zRi4TL+BHKjWg7MXKPGJ6dbwEjgPr3T+iPnFC5A22B+zWbDwKQ=="
+    crossorigin=""
+  ></script>
+</head>
+<body>
+  <div id="app">
+    <!-- The sky container holds all animated weather visuals -->
+    <div id="sky"></div>
+    <!-- Control panel for displaying weather info and toggles -->
+    <div id="controls" class="controls">
+      <div id="weather-info" class="info">Loading weather…</div>
+      <div class="buttons">
+        <button id="sound-toggle" class="control-btn">Toggle Sound</button>
+        <button id="theme-toggle" class="control-btn">Switch Theme</button>
+        <button id="disaster-toggle" class="control-btn">Disaster Mode</button>
+      </div>
+    </div>
+    <!-- Map container sits at the bottom of the page -->
+    <div id="map" class="map"></div>
+  </div>
+  <!-- Embedded styles for the weather visualisations -->
+  <style>
+/*
+ * Global styles and theme variables for the Real‑Time Weather Visualization app.
+ * This stylesheet defines a flexible set of CSS variables that are adjusted
+ * dynamically by the JavaScript code based on current weather conditions
+ * (clear, cloudy, rain, snow, fog, storm) as well as the time of day. It also
+ * includes keyframe animations for moving clouds, falling raindrops and
+ * snowflakes, drifting fog, flashing lightning, spinning tornadoes and
+ * streaking meteors. Theme classes (retro, sci‑fi, fantasy) override the
+ * default colour palette by redefining the root variables.
+ */
+
+:root {
+  --sky-day-start: #87ceeb;
+  --sky-day-end: #ffffff;
+  --sky-night-start: #0a1931;
+  --sky-night-end: #2e4374;
+  --cloud-color: rgba(255, 255, 255, 0.8);
+  --rain-color: rgba(174, 194, 224, 0.5);
+  --snow-color: rgba(255, 255, 255, 0.9);
+  --fog-color: rgba(255, 255, 255, 0.7);
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #000;
+}
+
+#app {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+#sky {
+  position: relative;
+  width: 100%;
+  height: 70%;
+  overflow: hidden;
+  background: linear-gradient(to bottom, var(--sky-day-start), var(--sky-day-end));
+}
+
+.map {
+  position: relative;
+  width: 100%;
+  height: 30%;
+  z-index: 5;
+}
+
+.controls {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  color: #fff;
+}
+
+.info {
+  margin-bottom: 6px;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  line-height: 1.3;
+}
+
+.buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.control-btn {
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.3s;
+}
+
+.control-btn:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.sun,
+.moon {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  top: 80%;
+  left: -15%;
+  z-index: 1;
+  animation: move-sun 30s linear infinite;
+}
+
+.sun {
+  background: radial-gradient(circle at center, #ffd700 0%, #ffa500 70%, #ff8c00 100%);
+}
+
+.moon {
+  background: radial-gradient(circle at center, #f0e68c 0%, #e6e6fa 70%, #d8bfd8 100%);
+}
+
+@keyframes move-sun {
+  0% {
+    top: 80%;
+    left: -15%;
+  }
+  50% {
+    top: 5%;
+    left: 50%;
+  }
+  100% {
+    top: 80%;
+    left: 115%;
+  }
+}
+
+.cloud {
+  position: absolute;
+  background: var(--cloud-color);
+  border-radius: 50%;
+  opacity: 0.8;
+  animation-name: move-clouds;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes move-clouds {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+.raindrop {
+  position: absolute;
+  width: 2px;
+  height: 15px;
+  background: var(--rain-color);
+  border-radius: 2px;
+  animation-name: fall-rain;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes fall-rain {
+  0% {
+    transform: translateY(-100px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(500px);
+    opacity: 0;
+  }
+}
+
+.snowflake {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: var(--snow-color);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--snow-color);
+  animation-name: fall-snow;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes fall-snow {
+  0% {
+    transform: translateY(-100px) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(400px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.fog-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--fog-color);
+  filter: blur(10px);
+  opacity: 0.6;
+  animation: move-fog 60s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes move-fog {
+  0% {
+    transform: translateX(-50%);
+  }
+  100% {
+    transform: translateX(50%);
+  }
+}
+
+.lightning {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 70%;
+  background: rgba(255, 255, 255, 0.8);
+  opacity: 0;
+  pointer-events: none;
+}
+
+@keyframes flash {
+  0% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.tornado {
+  position: absolute;
+  width: 20px;
+  height: 100px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, rgba(150, 150, 150, 0.6), rgba(90, 90, 90, 0.3));
+  animation-name: spin-tornado;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  z-index: 2;
+}
+
+@keyframes spin-tornado {
+  from {
+    transform: translateX(-50%) rotate(0deg) scale(1);
+  }
+  to {
+    transform: translateX(-50%) rotate(360deg) scale(1);
+  }
+}
+
+.meteor {
+  position: absolute;
+  width: 6px;
+  height: 30px;
+  background: linear-gradient(to bottom, #fff, rgba(255, 255, 255, 0));
+  transform: rotate(45deg);
+  animation-name: fall-meteor;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  z-index: 2;
+}
+
+@keyframes fall-meteor {
+  0% {
+    transform: translate(-50px, -50px) rotate(45deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(500px, 500px) rotate(45deg);
+    opacity: 0;
+  }
+}
+
+.theme-retro {
+  --sky-day-start: #f5deb3;
+  --sky-day-end: #e8b48a;
+  --sky-night-start: #2b2b58;
+  --sky-night-end: #4e3b61;
+}
+
+.theme-sci-fi {
+  --sky-day-start: #222222;
+  --sky-day-end: #111111;
+  --sky-night-start: #000000;
+  --sky-night-end: #333333;
+}
+
+.theme-fantasy {
+  --sky-day-start: #cdf0ea;
+  --sky-day-end: #fee3ec;
+  --sky-night-start: #63326e;
+  --sky-night-end: #392467;
+}
+  </style>
+
+  <!-- Embedded script powering the interactive weather dashboard -->
+  <script>
+// Elements from the DOM
+const sky = document.getElementById('sky');
+const weatherInfoEl = document.getElementById('weather-info');
+const soundToggleBtn = document.getElementById('sound-toggle');
+const themeToggleBtn = document.getElementById('theme-toggle');
+const disasterToggleBtn = document.getElementById('disaster-toggle');
+
+// Application state
+let currentSoundEnabled = false;
+let currentTheme = 0;
+const themes = ['default', 'retro', 'sci-fi', 'fantasy'];
+let disasterMode = false;
+
+/**
+ * SoundManager encapsulates synthesis of basic weather sounds via the
+ * Web Audio API. To keep the app lightweight and free from licensing issues
+ * it generates pseudo-random noise for rain, a decaying rumble for thunder
+ * and simple chirps for birds. Each method respects the currentSoundEnabled
+ * flag so sounds will only be heard when explicitly enabled.
+ */
+class SoundManager {
+  constructor() {
+    this.audioCtx = null;
+    this.nodes = {};
+  }
+  ensureContext() {
+    if (!this.audioCtx) {
+      this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+  }
+  createNoise(bufferSize = 4096) {
+    this.ensureContext();
+    const buffer = this.audioCtx.createBuffer(1, bufferSize, this.audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    return buffer;
+  }
+  startRain() {
+    if (!currentSoundEnabled) return;
+    this.ensureContext();
+    if (this.nodes.rain) return;
+    const buffer = this.createNoise(2 * this.audioCtx.sampleRate);
+    const source = this.audioCtx.createBufferSource();
+    source.buffer = buffer;
+    const filter = this.audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(1000, this.audioCtx.currentTime);
+    source.connect(filter).connect(this.audioCtx.destination);
+    source.loop = true;
+    source.start();
+    this.nodes.rain = source;
+  }
+  stopRain() {
+    if (this.nodes.rain) {
+      this.nodes.rain.stop();
+      this.nodes.rain = null;
+    }
+  }
+  startThunder() {
+    if (!currentSoundEnabled) return;
+    this.ensureContext();
+    const duration = 2;
+    const buffer = this.createNoise(this.audioCtx.sampleRate * duration);
+    const source = this.audioCtx.createBufferSource();
+    source.buffer = buffer;
+    const gain = this.audioCtx.createGain();
+    gain.gain.setValueAtTime(1, this.audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, this.audioCtx.currentTime + duration);
+    source.connect(gain).connect(this.audioCtx.destination);
+    source.start();
+  }
+  startBirds() {
+    if (!currentSoundEnabled) return;
+    this.ensureContext();
+    if (this.nodes.birds) return;
+    const osc = this.audioCtx.createOscillator();
+    const gain = this.audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(700, this.audioCtx.currentTime);
+    osc.frequency.setValueAtTime(800, this.audioCtx.currentTime + 0.1);
+    osc.frequency.setValueAtTime(600, this.audioCtx.currentTime + 0.2);
+    osc.connect(gain).connect(this.audioCtx.destination);
+    gain.gain.setValueAtTime(0, this.audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.3, this.audioCtx.currentTime + 0.1);
+    gain.gain.linearRampToValueAtTime(0, this.audioCtx.currentTime + 0.4);
+    osc.start();
+    setTimeout(() => {
+      osc.stop();
+      this.nodes.birds = null;
+    }, 500);
+    this.nodes.birds = osc;
+  }
+  stopAll() {
+    this.stopRain();
+  }
+}
+const soundManager = new SoundManager();
+
+function fetchWeather(lat, lon) {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,relative_humidity_2m,precipitation,weathercode,windspeed_10m&timezone=auto`;
+  return fetch(url).then((resp) => resp.json());
+}
+
+function mapWeatherCode(code) {
+  if (code === 0) return 'clear';
+  if ([1, 2, 3].includes(code)) return 'cloudy';
+  if ([45, 48].includes(code)) return 'fog';
+  if ([51, 53, 55, 56, 57].includes(code)) return 'rain';
+  if ([61, 63, 65, 80, 81, 82].includes(code)) return 'rain';
+  if ([66, 67, 71, 73, 75, 77, 85, 86].includes(code)) return 'snow';
+  if ([95, 96, 99].includes(code)) return 'storm';
+  return 'clear';
+}
+
+function setSkyGradient(condition, isDay) {
+  const root = document.documentElement;
+  switch (condition) {
+    case 'clear':
+      if (isDay) {
+        root.style.setProperty('--sky-day-start', '#87ceeb');
+        root.style.setProperty('--sky-day-end', '#f0faff');
+      } else {
+        root.style.setProperty('--sky-night-start', '#0a1931');
+        root.style.setProperty('--sky-night-end', '#274472');
+      }
+      break;
+    case 'cloudy':
+      if (isDay) {
+        root.style.setProperty('--sky-day-start', '#cfd9df');
+        root.style.setProperty('--sky-day-end', '#e2ebf0');
+      } else {
+        root.style.setProperty('--sky-night-start', '#2c3e50');
+        root.style.setProperty('--sky-night-end', '#4b79a1');
+      }
+      break;
+    case 'rain':
+      if (isDay) {
+        root.style.setProperty('--sky-day-start', '#9bc5c3');
+        root.style.setProperty('--sky-day-end', '#616e8b');
+      } else {
+        root.style.setProperty('--sky-night-start', '#1c2331');
+        root.style.setProperty('--sky-night-end', '#283048');
+      }
+      break;
+    case 'snow':
+      if (isDay) {
+        root.style.setProperty('--sky-day-start', '#e6f7ff');
+        root.style.setProperty('--sky-day-end', '#bacbd9');
+      } else {
+        root.style.setProperty('--sky-night-start', '#37445a');
+        root.style.setProperty('--sky-night-end', '#516a8b');
+      }
+      break;
+    case 'fog':
+      root.style.setProperty('--sky-day-start', '#a8c0ff');
+      root.style.setProperty('--sky-day-end', '#373b44');
+      root.style.setProperty('--sky-night-start', '#4b5d67');
+      root.style.setProperty('--sky-night-end', '#2c3e50');
+      break;
+    case 'storm':
+      root.style.setProperty('--sky-day-start', '#4e54c8');
+      root.style.setProperty('--sky-day-end', '#2c3e50');
+      root.style.setProperty('--sky-night-start', '#232526');
+      root.style.setProperty('--sky-night-end', '#414345');
+      break;
+  }
+}
+
+function clearSky() {
+  sky.innerHTML = '';
+  const tornado = document.querySelector('.tornado');
+  if (tornado) tornado.remove();
+}
+
+function showSunOrMoon(isDay) {
+  const element = document.createElement('div');
+  element.className = isDay ? 'sun' : 'moon';
+  sky.appendChild(element);
+}
+
+function createClouds(num = 5) {
+  for (let i = 0; i < num; i++) {
+    const cloud = document.createElement('div');
+    cloud.className = 'cloud';
+    const size = Math.random() * 100 + 50;
+    cloud.style.width = size + 'px';
+    cloud.style.height = size * 0.6 + 'px';
+    cloud.style.top = Math.random() * 40 + '%';
+    cloud.style.animationDuration = 40 + Math.random() * 20 + 's';
+    cloud.style.animationDelay = -Math.random() * 20 + 's';
+    sky.appendChild(cloud);
+  }
+}
+
+function createRain(density = 100) {
+  for (let i = 0; i < density; i++) {
+    const drop = document.createElement('div');
+    drop.className = 'raindrop';
+    drop.style.left = Math.random() * 100 + '%';
+    drop.style.animationDuration = 0.5 + Math.random() * 0.5 + 's';
+    drop.style.animationDelay = -Math.random() * 2 + 's';
+    drop.style.transform = 'translateY(' + -Math.random() * 200 + 'px)';
+    sky.appendChild(drop);
+  }
+}
+
+function createSnow(density = 60) {
+  for (let i = 0; i < density; i++) {
+    const flake = document.createElement('div');
+    flake.className = 'snowflake';
+    const size = Math.random() * 5 + 3;
+    flake.style.width = size + 'px';
+    flake.style.height = size + 'px';
+    flake.style.left = Math.random() * 100 + '%';
+    flake.style.animationDuration = 4 + Math.random() * 3 + 's';
+    flake.style.animationDelay = -Math.random() * 4 + 's';
+    flake.style.transform = 'translateY(' + -Math.random() * 200 + 'px)';
+    sky.appendChild(flake);
+  }
+}
+
+function createFog() {
+  const fog = document.createElement('div');
+  fog.className = 'fog-layer';
+  sky.appendChild(fog);
+}
+
+function triggerLightning() {
+  const lightning = document.createElement('div');
+  lightning.className = 'lightning';
+  sky.appendChild(lightning);
+  lightning.animate(
+    [
+      { opacity: 0 },
+      { opacity: 1 },
+      { opacity: 0 }
+    ],
+    {
+      duration: 400,
+      iterations: 1
+    }
+  ).onfinish = () => {
+    lightning.remove();
+  };
+  soundManager.startThunder();
+}
+
+function randomLightning() {
+  if (disasterMode) return;
+  const delay = 3000 + Math.random() * 7000;
+  setTimeout(() => {
+    triggerLightning();
+    randomLightning();
+  }, delay);
+}
+
+function updateWeatherUI(data) {
+  const cw = data.current_weather;
+  const { temperature, windspeed, weathercode } = cw;
+  const humidity = data.hourly.relative_humidity_2m ? data.hourly.relative_humidity_2m[0] : 'N/A';
+  const precipitation = data.hourly.precipitation ? data.hourly.precipitation[0] : 0;
+  const condition = mapWeatherCode(weathercode);
+  const now = new Date();
+  const hours = now.getHours();
+  const isDay = hours > 6 && hours < 19;
+  setSkyGradient(condition, isDay);
+  clearSky();
+  showSunOrMoon(isDay);
+  switch (condition) {
+    case 'clear':
+      soundManager.stopRain();
+      createClouds(2);
+      soundManager.startBirds();
+      break;
+    case 'cloudy':
+      soundManager.stopRain();
+      createClouds(8);
+      break;
+    case 'rain':
+      createClouds(6);
+      createRain(200);
+      soundManager.startRain();
+      break;
+    case 'snow':
+      createClouds(4);
+      createSnow(100);
+      soundManager.stopRain();
+      break;
+    case 'fog':
+      createFog();
+      createClouds(3);
+      soundManager.stopRain();
+      break;
+    case 'storm':
+      createClouds(8);
+      createRain(150);
+      randomLightning();
+      soundManager.startRain();
+      break;
+  }
+  weatherInfoEl.innerHTML = `
+    <strong>${data.timezone}</strong><br />
+    Condition: ${condition}<br />
+    Temperature: ${temperature.toFixed(1)} °C<br />
+    Wind Speed: ${windspeed.toFixed(1)} km/h<br />
+    Humidity: ${humidity}%<br />
+    Precipitation: ${precipitation} mm
+  `;
+}
+
+function loadMap(lat, lon) {
+  const map = L.map('map').setView([lat, lon], 10);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+  const marker = L.marker([lat, lon]).addTo(map);
+  marker.bindPopup('Your location').openPopup();
+}
+
+function activateDisasterMode() {
+  const tornado = document.createElement('div');
+  tornado.className = 'tornado';
+  tornado.style.left = 20 + Math.random() * 60 + '%';
+  tornado.style.animationDuration = '0.8s';
+  sky.appendChild(tornado);
+  const intervalId = setInterval(() => {
+    const meteor = document.createElement('div');
+    meteor.className = 'meteor';
+    meteor.style.top = '-50px';
+    meteor.style.left = Math.random() * 100 + '%';
+    meteor.style.animationDuration = 2 + Math.random() + 's';
+    sky.appendChild(meteor);
+    setTimeout(() => meteor.remove(), 3000);
+  }, 500);
+  sky.dataset.disasterInterval = intervalId;
+}
+
+function deactivateDisasterMode() {
+  const tornado = document.querySelector('.tornado');
+  if (tornado) tornado.remove();
+  const intervalId = sky.dataset.disasterInterval;
+  if (intervalId) {
+    clearInterval(intervalId);
+    delete sky.dataset.disasterInterval;
+  }
+}
+
+function init() {
+  const fallback = { latitude: 40.7128, longitude: -74.0060 };
+  function onPosition(pos) {
+    const { latitude, longitude } = pos.coords;
+    loadMap(latitude, longitude);
+    fetchWeather(latitude, longitude).then(updateWeatherUI);
+  }
+  function onError(err) {
+    console.warn('Geolocation failed:', err.message);
+    loadMap(fallback.latitude, fallback.longitude);
+    fetchWeather(fallback.latitude, fallback.longitude).then(updateWeatherUI);
+  }
+  if ('geolocation' in navigator) {
+    navigator.geolocation.getCurrentPosition(onPosition, onError);
+  } else {
+    onError(new Error('Geolocation unavailable'));
+  }
+  soundToggleBtn.addEventListener('click', () => {
+    currentSoundEnabled = !currentSoundEnabled;
+    if (!currentSoundEnabled) {
+      soundManager.stopAll();
+    }
+    soundToggleBtn.textContent = currentSoundEnabled ? 'Sound Off' : 'Sound On';
+  });
+  themeToggleBtn.addEventListener('click', () => {
+    currentTheme = (currentTheme + 1) % themes.length;
+    const theme = themes[currentTheme];
+    document.documentElement.classList.remove('theme-retro', 'theme-sci-fi', 'theme-fantasy');
+    if (theme !== 'default') {
+      document.documentElement.classList.add('theme-' + theme);
+    }
+  });
+  disasterToggleBtn.addEventListener('click', () => {
+    disasterMode = !disasterMode;
+    if (disasterMode) {
+      disasterToggleBtn.textContent = 'Normal Mode';
+      activateDisasterMode();
+    } else {
+      disasterToggleBtn.textContent = 'Disaster Mode';
+      deactivateDisasterMode();
+    }
+  });
+}
+
+// Register a very simple service worker on the fly for offline caching
+if ('serviceWorker' in navigator) {
+  const serviceWorkerCode = `const CACHE_NAME = 'weather-app-cache-v1';\nconst URLS_TO_CACHE = ['/', '/index.html'];\nself.addEventListener('install', event => {\n  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(URLS_TO_CACHE)));\n});\nself.addEventListener('fetch', event => {\n  event.respondWith(caches.match(event.request).then(response => response || fetch(event.request)));\n});`;
+  const blob = new Blob([serviceWorkerCode], { type: 'application/javascript' });
+  const swUrl = URL.createObjectURL(blob);
+  navigator.serviceWorker.register(swUrl).catch(err => {
+    console.warn('Service worker registration failed:', err);
+  });
+}
+
+window.addEventListener('load', init);
+  </script>
+</body>
+</html>
