@@ -1,0 +1,53 @@
+name: Verify SetRoom live site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-setroom-live.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check public GitHub Pages URL
+        shell: bash
+        run: |
+          url="https://dobstar2.github.io/weather-visualization-app/setroom/"
+          status="000"
+          result="NOT_LIVE"
+          title=""
+          for attempt in $(seq 1 18); do
+            status=$(curl -L -sS -o /tmp/setroom-live.html -w "%{http_code}" "$url" || true)
+            title=$(grep -o '<title>[^<]*' /tmp/setroom-live.html 2>/dev/null | head -1 | sed 's/<title>//' || true)
+            if [ "$status" = "200" ] && grep -q 'SetRoom' /tmp/setroom-live.html; then
+              result="LIVE"
+              break
+            fi
+            sleep 10
+          done
+          mkdir -p setroom-verification
+          {
+            echo "result=$result"
+            echo "http_status=$status"
+            echo "title=$title"
+            echo "url=$url"
+            echo "checked_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "source_commit=${GITHUB_SHA}"
+          } > setroom-verification/live-check.txt
+
+      - name: Commit verification result
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add setroom-verification/live-check.txt
+          git commit -m "Verify SetRoom live URL" || exit 0
+          git push
