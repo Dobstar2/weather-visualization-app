@@ -1,0 +1,6 @@
+result=LIVE
+http_status=200
+title=SetRoom — Your collection, without the guesswork
+url=https://dobstar2.github.io/weather-visualization-app/setroom/
+checked_at=2026-08-07T18:32:58Z
+source_commit=bdcaa833fb5cdf88faa673c1ff9771c056526eb7
