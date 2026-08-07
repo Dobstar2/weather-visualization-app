@@ -1,0 +1,1 @@
+{"name":"SetRoom","short_name":"SetRoom","description":"Collection, display, build, selling and buying tools for LEGO collectors.","start_url":"./#dashboard","scope":"./","display":"standalone","background_color":"#f5f3e9","theme_color":"#11120f","icons":[{"src":"assets/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}
