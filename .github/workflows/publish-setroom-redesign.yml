@@ -21,13 +21,13 @@ jobs:
       - name: Check out redesign branch
         uses: actions/checkout@v4
 
-      - name: Reconstruct and validate tested release
+      - name: Apply and validate tested redesign
         shell: bash
         run: |
-          cat setroom-redesign-release/release.b64.* | base64 --decode > /tmp/SetRoom-3D-Redesign.zip
-          echo "b96490226a0dc549cd7d9a4f08c6f1a4b6f0fc3e55b9c5a66e1641b4e61ea3c2  /tmp/SetRoom-3D-Redesign.zip" | sha256sum -c -
-          rm -rf setroom
-          unzip -q /tmp/SetRoom-3D-Redesign.zip -d .
+          cat setroom-redesign-release/patch.b64.* | base64 --decode > /tmp/setroom-redesign.patch.xz
+          echo "14f9303818b2ce601322ae5e540889bd12ca87a4eecca1568b2468bbd6d5b7a3  /tmp/setroom-redesign.patch.xz" | sha256sum -c -
+          xz -dc /tmp/setroom-redesign.patch.xz > /tmp/setroom-redesign.patch
+          patch -p1 < /tmp/setroom-redesign.patch
           node --check setroom/app.js
           node --check setroom/shelf3d.js
           node --check setroom/data.js
