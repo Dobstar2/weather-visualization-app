@@ -1,0 +1,49 @@
+name: Publish SetRoom 3D redesign
+
+on:
+  push:
+    branches:
+      - agent/setroom-3d-shelf-redesign
+    paths:
+      - 'setroom-redesign-release/READY'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-setroom-3d-redesign
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out redesign branch
+        uses: actions/checkout@v4
+
+      - name: Reconstruct and validate tested release
+        shell: bash
+        run: |
+          cat setroom-redesign-release/release.b64.* | base64 --decode > /tmp/SetRoom-3D-Redesign.zip
+          echo "b96490226a0dc549cd7d9a4f08c6f1a4b6f0fc3e55b9c5a66e1641b4e61ea3c2  /tmp/SetRoom-3D-Redesign.zip" | sha256sum -c -
+          rm -rf setroom
+          unzip -q /tmp/SetRoom-3D-Redesign.zip -d .
+          node --check setroom/app.js
+          node --check setroom/shelf3d.js
+          node --check setroom/data.js
+          node --check setroom/sw.js
+          node setroom/tests/smoke.js
+          python3 -m json.tool setroom/manifest.webmanifest >/dev/null
+          test -f setroom/index.html
+          test -f setroom/upgrade.css
+
+      - name: Commit clean source only
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -r setroom-redesign-release
+          git rm .github/workflows/publish-setroom-redesign.yml
+          git add setroom
+          git commit -m "Redesign SetRoom 3D shelf experience"
+          git push
