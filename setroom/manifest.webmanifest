@@ -1,12 +1,12 @@
 {
-  "name": "SetRoom — LEGO Collection Workspace",
+  "name": "SetRoom — 3D LEGO Shelf Planner",
   "short_name": "SetRoom",
-  "description": "Collection, display-space, build, selling and buying tools for LEGO display collectors.",
-  "start_url": "./#app/dashboard",
+  "description": "Search a LEGO set, check whether its box fits and arrange the real box artwork on measured shelves in an interactive 3D room.",
+  "start_url": "./#app/studio",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f3efe4",
-  "theme_color": "#121211",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
   "icons": [
     {"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
   ]

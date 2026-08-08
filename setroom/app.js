@@ -5,8 +5,8 @@
   const DEFAULT_STATE = window.SETROOM_DEFAULT_STATE || {};
   const CONFIG = window.SETROOM_CONFIG || {};
   const STORAGE_KEY = 'setroom.state.v1';
-  const PRO_ROUTES = new Set(['space', 'build', 'sell', 'buy']);
-  const ROUTES = new Set(['dashboard', 'collection', 'space', 'build', 'sell', 'buy', 'settings']);
+  const PRO_ROUTES = new Set(['build', 'sell', 'buy']);
+  const ROUTES = new Set(['studio', 'dashboard', 'collection', 'space', 'build', 'sell', 'buy', 'settings']);
   const moneyFormatter = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' });
   const numberFormatter = new Intl.NumberFormat('en-GB');
 
@@ -19,7 +19,13 @@
     selectedSellSetId: '',
     buyBudget: null,
     buyFitOnly: false,
-    sidebarOpen: false
+    sidebarOpen: false,
+    studioSearch: '',
+    studioSelectedSetId: '76269',
+    studioSelectedPlacementId: '',
+    studioActiveShelfId: '',
+    studioEnteringPlacementId: '',
+    studioCamera: { yaw:-16, pitch:-9, zoom:.9 }
   };
 
   let timer = { running: false, startedAt: 0, elapsedMs: 0, intervalId: null };
@@ -28,10 +34,12 @@
   let mediaChunks = [];
   let recordingUrl = '';
   let recordingStartedAt = 0;
+  let shelfStudio = null;
 
   init();
 
   function init() {
+    normaliseShelfPlacements();
     document.documentElement.classList.toggle('reduce-motion', Boolean(state.settings?.reducedMotion));
     window.addEventListener('hashchange', handleHash);
     document.addEventListener('click', handleClick);
@@ -78,7 +86,7 @@
   }
 
   function saveState() {
-    state.version = 1;
+    state.version = 2;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (error) {
@@ -92,13 +100,15 @@
       showMarketing();
       return;
     }
-    const route = hash.replace(/^#app\/?/, '').split(/[/?]/)[0] || 'dashboard';
-    currentRoute = ROUTES.has(route) ? route : 'dashboard';
+    const route = hash.replace(/^#app\/?/, '').split(/[/?]/)[0] || 'studio';
+    currentRoute = ROUTES.has(route) ? route : 'studio';
     showApplication();
   }
 
   function showMarketing() {
     stopCamera();
+    shelfStudio?.destroy();
+    shelfStudio = null;
     document.querySelector('[data-marketing-header]')?.removeAttribute('hidden');
     document.getElementById('marketing-view')?.removeAttribute('hidden');
     const app = document.getElementById('app-view');
@@ -117,7 +127,7 @@
   }
 
   function navigate(route) {
-    const safeRoute = ROUTES.has(route) ? route : 'dashboard';
+    const safeRoute = ROUTES.has(route) ? route : 'studio';
     if (location.hash === `#app/${safeRoute}`) {
       currentRoute = safeRoute;
       showApplication();
@@ -129,68 +139,64 @@
   function renderApp() {
     stopTimerIntervalOnly();
     if (currentRoute !== 'build') stopCamera();
+    shelfStudio?.destroy();
+    shelfStudio = null;
     const app = document.getElementById('app-view');
     if (!app) return;
     const goal = goalProgress();
     const trial = trialDaysLeft();
     const plan = hasPro() ? (state.licensed ? 'PRO' : `TRIAL · ${trial}D`) : 'FREE';
+    const route = currentRoute === 'dashboard' || currentRoute === 'space' ? 'studio' : currentRoute;
     const trialStrip = state.trialStartedAt && !state.licensed && trial > 0
-      ? `<div class="trial-strip"><span>PRO TRIAL · ${trial} DAY${trial === 1 ? '' : 'S'} LEFT · YOUR COLLECTION STAYS FREE</span><button type="button" data-action="paywall">Compare plans</button></div>`
+      ? `<div class="trial-strip"><span>Pro trial · ${trial} day${trial === 1 ? '' : 's'} left</span><button type="button" data-action="paywall">View plan</button></div>`
       : '';
 
-    app.innerHTML = `<div class="app-shell ${ui.sidebarOpen ? 'sidebar-open' : ''}">
-      <aside class="app-sidebar" aria-label="SetRoom navigation">
-        <div class="sidebar-top"><a class="brand brand-light" href="#app/dashboard"><span class="brand-mark">SR</span><span class="brand-word">SETROOM</span></a><button class="sidebar-close" type="button" data-action="close-sidebar" aria-label="Close menu">×</button></div>
-        <nav class="side-nav">
-          ${navButton('dashboard', 'D', 'Dashboard')}
-          ${navButton('collection', 'C', 'Collection')}
-          ${navButton('space', 'S', 'Space planner', true)}
-          ${navButton('build', 'B', 'Build replay', true)}
-          ${navButton('sell', '£', 'Sell mode', true)}
-          ${navButton('buy', 'N', 'Buy smart', true)}
-          ${navButton('settings', '·', 'Settings')}
+    app.innerHTML = `<div class="app-shell">
+      <header class="app-header">
+        <a class="brand" href="#app/studio" aria-label="SetRoom shelf studio"><span class="brand-brick" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="brand-word">SetRoom</span></a>
+        <nav class="app-nav" aria-label="Workspace navigation">
+          ${navButton('studio', 'Shelf')}
+          ${navButton('collection', 'Collection')}
+          ${navButton('build', 'Build', true)}
+          ${navButton('sell', 'Sell', true)}
+          ${navButton('buy', 'Buy', true)}
         </nav>
-        <div class="sidebar-spacer"></div>
-        <div class="sidebar-goal"><span>${escapeHTML(state.goal?.name || 'PROFIT GOAL')}</span><strong>${money(goal.current)} / ${money(goal.target)}</strong><p>${Math.round(goal.percent)}% funded by logged sale profit</p><div class="goal-track"><i style="width:${goal.percent}%"></i></div></div>
-        <div class="sidebar-plan"><span>${plan}</span><button type="button" data-action="paywall">${hasPro() ? 'PLAN' : 'UPGRADE'}</button></div>
-      </aside>
-      <main class="app-main">
-        <header class="app-topbar"><div class="app-topbar-meta"><button class="mobile-menu" type="button" data-action="open-sidebar" aria-label="Open menu">☰</button><span>SETROOM / ${routeTitle(currentRoute).toUpperCase()}</span></div><div class="app-topbar-actions"><button class="button button-quiet button-small" type="button" data-action="tour">Product tour</button><button class="button button-ink button-small" type="button" data-action="add-set">+ Add set</button></div></header>
-        ${trialStrip}
-        <section class="app-content" id="app-content">${renderRoute()}</section>
-      </main>
+        <div class="app-header-actions"><button class="plan-pill" type="button" data-action="paywall">${plan}</button><button class="button button-primary" type="button" data-action="add-set">Add set</button><button class="mobile-menu" type="button" data-action="open-sidebar" aria-label="Open menu">Menu</button></div>
+      </header>
+      <div class="mobile-nav-drawer" aria-label="Mobile workspace navigation">
+        ${navButton('studio', 'Shelf')}${navButton('collection', 'Collection')}${navButton('build', 'Build', true)}${navButton('sell', 'Sell', true)}${navButton('buy', 'Buy', true)}${navButton('settings', 'Settings')}
+      </div>
+      ${trialStrip}
+      <main class="app-main"><section class="app-content" id="app-content">${renderRoute()}</section></main>
+      <nav class="mobile-bottom-nav" aria-label="Mobile quick navigation">${navButton('studio', 'Shelf')}${navButton('collection', 'Sets')}${navButton('build', 'Build', true)}${navButton('sell', 'Sell', true)}</nav>
     </div>`;
     ui.sidebarOpen = false;
     afterRender();
   }
 
-  function navButton(route, icon, label, pro = false) {
-    return `<button class="nav-button ${currentRoute === route ? 'is-active' : ''}" type="button" data-route="${route}"><span class="nav-icon">${icon}</span><span>${label}</span>${pro ? '<span class="nav-badge">PRO</span>' : ''}</button>`;
+  function navButton(route, label, pro = false) {
+    const activeRoute = currentRoute === 'dashboard' || currentRoute === 'space' ? 'studio' : currentRoute;
+    const icon = ({studio:'▦',collection:'□',build:'◷',sell:'£',buy:'+',settings:'·'})[route] || '·';
+    return `<button class="nav-button ${activeRoute === route ? 'is-active' : ''}" type="button" data-route="${route}"><span class="nav-icon" aria-hidden="true">${icon}</span><span>${label}</span>${pro ? '<small>PRO</small>' : ''}</button>`;
   }
 
   function routeTitle(route) {
-    return ({ dashboard: 'Dashboard', collection: 'Collection', space: 'Space planner', build: 'Build replay', sell: 'Sell mode', buy: 'Buy smart', settings: 'Settings' })[route] || 'Dashboard';
+    return ({ studio:'Shelf studio', dashboard:'Shelf studio', collection:'Collection', space:'Shelf studio', build:'Build replay', sell:'Sell mode', buy:'Buy smart', settings:'Settings' })[route] || 'Shelf studio';
   }
 
   function renderRoute() {
-    if (PRO_ROUTES.has(currentRoute) && !hasPro()) return renderLocked(currentRoute);
-    return ({
-      dashboard: renderDashboard,
-      collection: renderCollection,
-      space: renderSpace,
-      build: renderBuild,
-      sell: renderSell,
-      buy: renderBuy,
-      settings: renderSettings
-    })[currentRoute]?.() || renderDashboard();
+    const route = currentRoute === 'dashboard' || currentRoute === 'space' ? 'studio' : currentRoute;
+    if (PRO_ROUTES.has(route) && !hasPro()) return renderLocked(route);
+    return ({ studio:renderStudio, collection:renderCollection, build:renderBuild, sell:renderSell, buy:renderBuy, settings:renderSettings })[route]?.() || renderStudio();
   }
 
   function afterRender() {
-    if (currentRoute === 'collection') setupCollection();
-    if (currentRoute === 'space' && hasPro()) setupSpace();
-    if (currentRoute === 'build' && hasPro()) setupBuild();
-    if (currentRoute === 'sell' && hasPro()) setupSell();
-    if (currentRoute === 'buy' && hasPro()) setupBuy();
+    const route = currentRoute === 'dashboard' || currentRoute === 'space' ? 'studio' : currentRoute;
+    if (route === 'studio') setupStudio();
+    if (route === 'collection') setupCollection();
+    if (route === 'build' && hasPro()) setupBuild();
+    if (route === 'sell' && hasPro()) setupSell();
+    if (route === 'buy' && hasPro()) setupBuy();
   }
 
   function pageHead(kicker, title, copy, actions = '') {
@@ -303,6 +309,246 @@
       buy: ['BUY SMART', 'Let the whole collection choose next.', 'Rank sets by budget, taste and the free shelf space you actually have.', '04']
     }[route];
     return `<section class="locked-page"><div class="locked-copy"><span>PRO · ${copy[0]}</span><h1>${copy[1]}</h1><p>${copy[2]}</p><button class="button button-acid button-large" type="button" data-action="start-trial" data-route-after="${route}">Start seven-day trial</button></div><aside class="locked-side"><strong>${copy[3]}</strong><span>ONE OF FOUR PAID DECISION TOOLS</span><p>The free catalogue remains available after the trial. SetRoom only charges for the tools designed to prevent expensive mistakes.</p></aside></section>`;
+  }
+
+  function normaliseShelfPlacements() {
+    (state.shelves || []).forEach(shelf => {
+      let cursor = 0;
+      shelf.placements = Array.isArray(shelf.placements) ? shelf.placements : [];
+      shelf.placements.forEach(placement => {
+        const set = getSet(placement.setId);
+        const dims = orientedDimensions(set, placement.orientation || 'normal');
+        placement.id = placement.id || uid('place');
+        placement.orientation = placement.orientation === 'rotated' ? 'rotated' : 'normal';
+        if (!Number.isFinite(Number(placement.x))) placement.x = cursor;
+        if (!Number.isFinite(Number(placement.z))) placement.z = 0;
+        placement.x = clamp(placement.x, 0, Math.max(0, Number(shelf.width) - dims.w));
+        placement.z = clamp(placement.z, 0, Math.max(0, Number(shelf.depth) - dims.d));
+        cursor = Math.max(cursor, placement.x + dims.w + 2);
+      });
+    });
+  }
+
+  function placementRecord(key) {
+    for (const shelf of state.shelves || []) {
+      const placement = (shelf.placements || []).find(item => String(item.id) === String(key));
+      if (placement) return { shelf, placement, set:getSet(placement.setId) };
+    }
+    return null;
+  }
+
+  function placementForSet(setId) {
+    for (const shelf of state.shelves || []) {
+      const placement = (shelf.placements || []).find(item => item.setId === setId);
+      if (placement) return { shelf, placement, set:getSet(setId) };
+    }
+    return null;
+  }
+
+  function placementCollision(shelf, candidate, excludingId = '') {
+    const dims = orientedDimensions(candidate.set, candidate.orientation);
+    return (shelf.placements || []).some(other => {
+      if (String(other.id) === String(excludingId)) return false;
+      const otherSet = getSet(other.setId);
+      const otherDims = orientedDimensions(otherSet, other.orientation);
+      return candidate.x < Number(other.x || 0) + otherDims.w && candidate.x + dims.w > Number(other.x || 0) && candidate.z < Number(other.z || 0) + otherDims.d && candidate.z + dims.d > Number(other.z || 0);
+    });
+  }
+
+  function firstOpenPosition(set, shelf, orientation = 'normal', excludingId = '') {
+    const dims = orientedDimensions(set, orientation);
+    const width = Number(shelf.width) || 0;
+    const depth = Number(shelf.depth) || 0;
+    const height = Number(shelf.height) || 0;
+    if (dims.w > width || dims.d > depth || dims.h > height) return { fits:false, dims, reason:dims.w > width ? 'width' : dims.d > depth ? 'depth' : 'height' };
+    const step = 2;
+    for (let z = 0; z <= Math.max(0, depth - dims.d) + .01; z += step) {
+      for (let x = 0; x <= Math.max(0, width - dims.w) + .01; x += step) {
+        const candidate = { set, orientation, x, z };
+        if (!placementCollision(shelf, candidate, excludingId)) {
+          return { fits:true, dims, x, z, remainingWidth:Math.max(0, width - x - dims.w), remainingDepth:Math.max(0, depth - z - dims.d), remainingHeight:Math.max(0, height - dims.h) };
+        }
+      }
+    }
+    return { fits:false, dims, reason:'space' };
+  }
+
+  function bestStudioFit(set, excludingId = '') {
+    if (!set) return null;
+    const fits = [];
+    (state.shelves || []).forEach(shelf => ['normal','rotated'].forEach(orientation => {
+      const fit = firstOpenPosition(set, shelf, orientation, excludingId);
+      if (fit.fits) fits.push({ shelf, orientation, ...fit, waste:(fit.remainingWidth + fit.remainingDepth * .35 + fit.remainingHeight * .12) });
+    }));
+    fits.sort((a,b) => a.waste - b.waste || Number(a.shelf.width) - Number(b.shelf.width));
+    return fits[0] || null;
+  }
+
+  function studioSearchResults(query = ui.studioSearch) {
+    const q = String(query || '').trim().toLowerCase();
+    const pool = allSets().filter(set => !q || `${set.number} ${set.name} ${set.theme}`.toLowerCase().includes(q));
+    return pool.sort((a,b) => Number(b.demand || 0) - Number(a.demand || 0)).slice(0, q ? 8 : 5);
+  }
+
+  function studioResultsMarkup() {
+    const results = studioSearchResults();
+    return results.map(set => `<button class="studio-search-result ${set.id === ui.studioSelectedSetId ? 'is-selected' : ''}" type="button" data-action="studio-select-set" data-set-id="${escapeHTML(set.id)}"><span class="search-thumb">${bareImage(set)}</span><span><b>${escapeHTML(set.name)}</b><small>${escapeHTML(set.number)} · ${escapeHTML(set.theme)} · ${number(set.pieces)} pieces</small></span><i aria-hidden="true">›</i></button>`).join('') || `<div class="studio-search-empty"><b>No matching set</b><span>Try a set number, name or theme.</span></div>`;
+  }
+
+  function studioProductMarkup(set) {
+    if (!set) return '';
+    const existing = placementForSet(set.id);
+    const best = bestStudioFit(set, existing?.placement.id || '');
+    const placed = Boolean(existing);
+    const fitClass = best ? 'is-fit' : 'is-no-fit';
+    const fitTitle = best ? `Best fit: ${best.shelf.name}` : 'No shelf fits this set';
+    const fitDetail = best ? `${best.orientation === 'rotated' ? 'Rotated · ' : ''}${best.remainingWidth.toFixed(0)} cm width, ${best.remainingDepth.toFixed(0)} cm depth and ${best.remainingHeight.toFixed(0)} cm height left` : 'Add a larger shelf or rearrange the current boxes.';
+    return `<article class="studio-product-card">
+      <div class="studio-product-art">${bareImage(set)}<span>ACTUAL BOX ARTWORK</span></div>
+      <div class="studio-product-copy"><span class="product-kicker">${escapeHTML(set.theme)} · ${escapeHTML(set.number)}</span><h2>${escapeHTML(set.name)}</h2><div class="product-facts"><span><b>${number(set.pieces)}</b> pieces</span><span><b>${set.dimensions.w} × ${set.dimensions.d} × ${set.dimensions.h}</b> cm</span><span><b>${set.year || '—'}</b> release</span></div><div class="fit-banner ${fitClass}"><i></i><span><b>${escapeHTML(fitTitle)}</b><small>${escapeHTML(fitDetail)}</small></span></div></div>
+      <div class="studio-product-action"><button class="button button-primary button-large" type="button" data-action="studio-add-set" data-set-id="${escapeHTML(set.id)}" ${best ? '' : 'disabled'}>${placed ? 'Move to best shelf' : 'Add to shelf'}</button><small>${best ? 'Placement is calculated automatically.' : 'This set is kept in the preview until it fits.'}</small></div>
+    </article>`;
+  }
+
+  function selectedPlacementMarkup() {
+    const record = placementRecord(ui.studioSelectedPlacementId);
+    if (!record) {
+      const active = state.shelves.find(shelf => shelf.id === ui.studioActiveShelfId) || state.shelves[0];
+      if (!active) return `<div class="inspector-empty"><b>Add your first shelf</b><p>Measure the usable width, depth and height.</p><button class="button button-primary" type="button" data-action="add-shelf">Add shelf</button></div>`;
+      const used = shelfUsage(active);
+      return `<div class="inspector-empty"><span class="inspector-label">SELECTED SHELF</span><h3>${escapeHTML(active.name)}</h3><p>${escapeHTML(active.room || 'No room set')} · ${active.width} W × ${active.depth} D × ${active.height} H cm</p><div class="capacity-meter"><i style="width:${clamp(used / Math.max(1, active.width) * 100,0,100)}%"></i></div><strong>${Math.max(0, active.width-used).toFixed(1)} cm width free</strong><small>Select a box to move, rotate or remove it.</small></div>`;
+    }
+    const { shelf, placement, set } = record;
+    const dims = orientedDimensions(set, placement.orientation);
+    return `<div class="selected-box-panel"><span class="inspector-label">SELECTED BOX</span><div class="selected-box-head"><span class="selected-box-thumb">${bareImage(set)}</span><div><h3>${escapeHTML(set.name)}</h3><p>${escapeHTML(set.number)} · ${dims.w} W × ${dims.d} D × ${dims.h} H cm</p></div></div><div class="form-grid compact"><label class="form-field full"><span>Move to shelf</span><select id="studio-placement-shelf">${state.shelves.map(item => `<option value="${escapeHTML(item.id)}" ${item.id === shelf.id ? 'selected' : ''}>${escapeHTML(item.name)}</option>`).join('')}</select></label><label class="form-field full"><span>Box direction</span><select id="studio-placement-orientation"><option value="normal" ${placement.orientation !== 'rotated' ? 'selected' : ''}>Front facing</option><option value="rotated" ${placement.orientation === 'rotated' ? 'selected' : ''}>Turn 90°</option></select></label></div><button class="button button-primary full-button" type="button" data-action="studio-apply-placement" data-placement-id="${escapeHTML(placement.id)}">Apply placement</button><button class="button button-quiet full-button" type="button" data-action="studio-remove-placement" data-placement-id="${escapeHTML(placement.id)}">Remove from shelf</button><p class="drag-hint">You can also drag this box directly inside the 3D shelf.</p></div>`;
+  }
+
+  function renderSavedShelves() {
+    return (state.shelves || []).map((shelf,index) => {
+      const used = shelfUsage(shelf);
+      const count = (shelf.placements || []).length;
+      return `<button class="saved-shelf-card ${ui.studioActiveShelfId === shelf.id ? 'is-active' : ''}" type="button" data-action="studio-select-shelf" data-shelf-id="${escapeHTML(shelf.id)}"><span class="shelf-card-number">${String(index+1).padStart(2,'0')}</span><div><b>${escapeHTML(shelf.name)}</b><small>${escapeHTML(shelf.room || 'Unassigned')} · ${count} box${count === 1 ? '' : 'es'}</small></div><span class="shelf-free"><b>${Math.max(0, Number(shelf.width)-used).toFixed(0)} cm</b><small>width free</small></span><i style="--used:${clamp(used/Math.max(1,shelf.width)*100,0,100)}%"></i></button>`;
+    }).join('') || `<div class="empty-state compact"><h3>No shelves yet</h3><p>Add a shelf to start checking fit.</p></div>`;
+  }
+
+  function renderStudio() {
+    normaliseShelfPlacements();
+    const set = getSet(ui.studioSelectedSetId) || CATALOG[0];
+    ui.studioSelectedSetId = set?.id || '';
+    if (!ui.studioActiveShelfId) ui.studioActiveShelfId = state.shelves[0]?.id || '';
+    const placements = (state.shelves || []).reduce((sum,shelf) => sum + (shelf.placements || []).length,0);
+    const existing = placementForSet(set?.id);
+    const best = bestStudioFit(set, existing?.placement.id || '');
+    return `<div class="studio-page">
+      <header class="studio-heading"><div><span class="page-kicker">3D SHELF PLANNER</span><h1>See where every box fits.</h1><p>Search a set, check the suggested shelf, then place and rearrange it in 3D.</p></div><div class="studio-steps" aria-label="How to use SetRoom"><span class="is-active"><b>1</b>Pick a set</span><span><b>2</b>Check the fit</span><span><b>3</b>Place the box</span></div></header>
+      <section class="studio-search-section" aria-label="Find a LEGO set"><div class="studio-search-box"><label for="studio-search">Search by set number, name or theme</label><div><span aria-hidden="true">⌕</span><input id="studio-search" type="search" value="${escapeHTML(ui.studioSearch)}" placeholder="Try 76269 or Avengers Tower" autocomplete="off"><kbd>SEARCH</kbd></div></div><div class="studio-search-results" id="studio-search-results">${studioResultsMarkup()}</div></section>
+      <div id="studio-product-panel">${studioProductMarkup(set)}</div>
+      <section class="studio-workspace"><div class="studio-scene-card"><header><div><span class="page-kicker">YOUR DISPLAY</span><h2>Drag to explore. Select a box to move it.</h2></div><div class="scene-status"><span>${state.shelves.length} shelves</span><span>${placements} boxes</span><button type="button" data-action="studio-auto-arrange">Auto-arrange</button></div></header><div class="studio-scene" id="studio-scene" aria-label="Interactive 3D shelf"></div></div><aside class="studio-inspector"><header><span>BOX & SHELF DETAILS</span><button type="button" data-action="add-shelf">+ Shelf</button></header><div id="studio-inspector-body">${selectedPlacementMarkup()}</div>${!hasPro() ? '<button class="pro-nudge" type="button" data-action="paywall"><b>Unlock smart layouts</b><span>Auto-arrange, build replay, selling tools and purchase recommendations.</span><i>View Pro</i></button>' : ''}</aside></section>
+      <section class="saved-shelves"><header><div><span class="page-kicker">SAVED SHELVES</span><h2>Your measured spaces</h2></div><button class="button button-secondary" type="button" data-action="add-shelf">Add shelf</button></header><div class="saved-shelf-list">${renderSavedShelves()}</div></section>
+      <section class="studio-stats"><article><span>COLLECTION</span><strong>${ownedItems().length}</strong><p>owned sets</p></article><article><span>ON DISPLAY</span><strong>${placements}</strong><p>boxes placed</p></article><article><span>NEXT FIT</span><strong>${best ? escapeHTML(best.shelf.name) : 'No fit'}</strong><p>${best ? `${best.remainingWidth.toFixed(0)} cm width left` : 'rearrange or add space'}</p></article><article><span>LOCAL SAVE</span><strong>On</strong><p>persists after refresh</p></article></section>
+    </div>`;
+  }
+
+  function setupStudio() {
+    const target = document.getElementById('studio-scene');
+    if (!target || !window.SetRoomShelf3D?.ShelfStudio) return;
+    const selectedSet = getSet(ui.studioSelectedSetId);
+    const existing = placementForSet(selectedSet?.id);
+    const best = bestStudioFit(selectedSet, existing?.placement.id || '');
+    const ghost = best && !existing ? { shelfId:best.shelf.id, set:selectedSet, orientation:best.orientation, x:best.x, z:best.z, fits:true } : null;
+    shelfStudio = new window.SetRoomShelf3D.ShelfStudio(target, {
+      shelves:state.shelves,
+      getSet,
+      getPlacementDimensions:(placement,set) => set.dimensions,
+      selectedPlacementId:ui.studioSelectedPlacementId,
+      enteringPlacementId:ui.studioEnteringPlacementId,
+      activeShelfId:ui.studioActiveShelfId,
+      ghost,
+      camera:ui.studioCamera,
+      onSelect:key => { ui.studioSelectedPlacementId = key; ui.studioEnteringPlacementId = ''; const record=placementRecord(key); if(record) ui.studioActiveShelfId=record.shelf.id; renderApp(); },
+      onShelfSelect:shelfId => { ui.studioActiveShelfId=shelfId; ui.studioSelectedPlacementId=''; renderApp(); },
+      onMove:(key,position) => moveStudioPlacement(key,position),
+      onCameraChange:camera => { ui.studioCamera=camera; }
+    });
+    window.setTimeout(() => { ui.studioEnteringPlacementId=''; },700);
+  }
+
+  function addStudioSet(setId) {
+    const set = getSet(setId || ui.studioSelectedSetId);
+    if (!set) return;
+    const existing = placementForSet(set.id);
+    const best = bestStudioFit(set, existing?.placement.id || '');
+    if (!best) return toast('This box does not fit the measured shelves yet.', 'error');
+    let item = getCollectionItem(set.id);
+    if (!item) { item={ setId:set.id,status:'owned',paid:0,progress:0,condition:'',acquiredAt:'',notes:'',quantity:1 }; state.collection.push(item); }
+    else item.status='owned';
+    const placement = existing?.placement || { id:uid('place'), setId:set.id };
+    if (existing) existing.shelf.placements = existing.shelf.placements.filter(candidate => candidate.id !== placement.id);
+    Object.assign(placement, { setId:set.id, orientation:best.orientation, x:best.x, z:best.z });
+    best.shelf.placements = Array.isArray(best.shelf.placements) ? best.shelf.placements : [];
+    best.shelf.placements.push(placement);
+    ui.studioSelectedPlacementId=placement.id;
+    ui.studioEnteringPlacementId=placement.id;
+    ui.studioActiveShelfId=best.shelf.id;
+    saveState();
+    toast(`${set.name} added to ${best.shelf.name}.`, 'success');
+    renderApp();
+  }
+
+  function moveStudioPlacement(key, position) {
+    const record=placementRecord(key);
+    if(!record) return;
+    ui.studioSelectedPlacementId=key;
+    ui.studioActiveShelfId=record.shelf.id;
+    const original={x:record.placement.x,z:record.placement.z};
+    record.placement.x=Number(position.x)||0;
+    record.placement.z=Number(position.z)||0;
+    const candidate={set:record.set,orientation:record.placement.orientation,x:record.placement.x,z:record.placement.z};
+    if(placementCollision(record.shelf,candidate,record.placement.id)) {
+      Object.assign(record.placement,original);
+      toast('That spot overlaps another box. Try the open space beside or behind it.','error');
+    } else {
+      saveState();
+      toast('Box position saved.','success');
+    }
+    renderApp();
+  }
+
+  function applyStudioPlacement(key) {
+    const record=placementRecord(key);
+    if(!record) return;
+    const shelf=state.shelves.find(item=>item.id===document.getElementById('studio-placement-shelf')?.value);
+    const orientation=document.getElementById('studio-placement-orientation')?.value || 'normal';
+    if(!shelf) return;
+    const fit=firstOpenPosition(record.set,shelf,orientation,record.placement.id);
+    if(!fit.fits) return toast('That shelf has no open space for this box in that direction.','error');
+    record.shelf.placements=record.shelf.placements.filter(item=>item.id!==record.placement.id);
+    Object.assign(record.placement,{orientation,x:fit.x,z:fit.z});
+    shelf.placements.push(record.placement);
+    ui.studioActiveShelfId=shelf.id;
+    saveState();
+    toast(`${record.set.name} moved to ${shelf.name}.`,'success');
+    renderApp();
+  }
+
+  function removeStudioPlacement(key) {
+    const record=placementRecord(key);
+    if(!record) return;
+    record.shelf.placements=record.shelf.placements.filter(item=>item.id!==record.placement.id);
+    ui.studioSelectedPlacementId='';
+    saveState();
+    toast(`${record.set.name} removed from the shelf. It remains in your collection.`,'info');
+    renderApp();
+  }
+
+  function autoArrangeStudio() {
+    if(!hasPro()) return openPaywall();
+    autoArrange();
+  }
+
+  function refreshStudioSearch() {
+    const results=document.getElementById('studio-search-results');
+    if(results) results.innerHTML=studioResultsMarkup();
   }
 
   function greetingLine() {
@@ -694,7 +940,8 @@
     if (!fit.fits) return toast('That orientation does not fit the remaining shelf space.', 'error');
     removeSetFromShelves(setId);
     shelf.placements = Array.isArray(shelf.placements) ? shelf.placements : [];
-    shelf.placements.push({ setId, orientation });
+    const position = firstOpenPosition(set, shelf, orientation, setId);
+    shelf.placements.push({ id:uid('place'), setId, orientation, x:position.x || 0, z:position.z || 0 });
     saveState();
     closeModal();
     toast(`${set.name} placed on ${shelf.name}.`, 'success');
@@ -726,9 +973,9 @@
     state.shelves.forEach(shelf => { shelf.placements = []; });
     let placed = 0;
     sets.forEach(set => {
-      const best = bestFitForSet(set);
+      const best = bestStudioFit(set);
       if (best) {
-        best.shelf.placements.push({ setId:set.id, orientation:best.orientation });
+        best.shelf.placements.push({ id:uid('place'), setId:set.id, orientation:best.orientation, x:best.x, z:best.z });
         placed += 1;
       }
     });
@@ -1257,7 +1504,7 @@
     const setId = actionNode.dataset.setId || '';
     const shelfId = actionNode.dataset.shelfId || '';
     const actions = {
-      'open-app': () => navigate('dashboard'),
+      'open-app': () => navigate('studio'),
       'tour': openTour,
       'privacy': () => openLegal('privacy'),
       'terms': () => openLegal('terms'),
@@ -1265,10 +1512,16 @@
       'checkout': openCheckout,
       'start-trial': () => startTrial(actionNode.dataset.routeAfter || 'space'),
       'close-modal': closeModal,
-      'open-sidebar': () => { ui.sidebarOpen = true; document.querySelector('.app-shell')?.classList.add('sidebar-open'); },
-      'close-sidebar': () => { ui.sidebarOpen = false; document.querySelector('.app-shell')?.classList.remove('sidebar-open'); },
-      'add-set': () => openAddSetModal(),
-      'tour-add-set': () => { closeModal(); navigate('collection'); window.setTimeout(() => openAddSetModal(),80); },
+      'open-sidebar': () => { ui.sidebarOpen = !ui.sidebarOpen; document.querySelector('.app-shell')?.classList.toggle('mobile-nav-open',ui.sidebarOpen); },
+      'close-sidebar': () => { ui.sidebarOpen = false; document.querySelector('.app-shell')?.classList.remove('mobile-nav-open'); },
+      'add-set': () => { if ((currentRoute === 'studio' || currentRoute === 'dashboard' || currentRoute === 'space')) document.getElementById('studio-search')?.focus(); else openAddSetModal(); },
+      'studio-select-set': () => { ui.studioSelectedSetId=setId; ui.studioSearch=''; ui.studioSelectedPlacementId=''; renderApp(); },
+      'studio-add-set': () => addStudioSet(setId),
+      'studio-select-shelf': () => { ui.studioActiveShelfId=shelfId; ui.studioSelectedPlacementId=''; renderApp(); },
+      'studio-apply-placement': () => applyStudioPlacement(actionNode.dataset.placementId || ''),
+      'studio-remove-placement': () => removeStudioPlacement(actionNode.dataset.placementId || ''),
+      'studio-auto-arrange': autoArrangeStudio,
+      'tour-add-set': () => { closeModal(); navigate('studio'); window.setTimeout(() => document.getElementById('studio-search')?.focus(),80); },
       'choose-catalog-set': () => {
         const root = document.getElementById('modal-root');
         if (root) root.dataset.selectedSetId = setId;
@@ -1328,6 +1581,7 @@
   }
 
   function handleInput(event) {
+    if (event.target.id === 'studio-search') { ui.studioSearch=event.target.value; refreshStudioSearch(); }
     if (event.target.id === 'collection-search') {
       ui.collectionSearch = event.target.value;
       applyCollectionFilter();

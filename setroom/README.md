@@ -1,79 +1,82 @@
 # SetRoom
 
-SetRoom is a display-first web app for LEGO collectors. The free layer catalogues owned, wanted and sold sets. The paid layer is built around four decisions that can save a collector money or remove substantial friction:
+SetRoom is a display-first web app for LEGO collectors. Its main experience is deliberately simple:
 
-- **BrickSpace** — measure shelves, test normal and rotated fit, place sets to scale and auto-arrange the room.
-- **BuildReplay** — time build sessions, track progress and record a local camera replay.
-- **BrickExit** — calculate fees, fulfilment, take-home money and actual profit before selling.
-- **BrickBrain** — rank the next purchase using budget, favourite themes, wishlist intent and current display space.
+1. Search for a set.
+2. See the real box artwork and physical dimensions.
+3. Check whether it fits.
+4. Place and rearrange the box on a measured 3D shelf.
 
 ## Live path
 
-This project is designed to be published from the existing GitHub Pages repository under:
-
-`/setroom/`
-
-The expected public address is:
+The app is published from this repository under `/setroom/`:
 
 `https://dobstar2.github.io/weather-visualization-app/setroom/`
 
-## Product model
+## The redesigned shelf studio
 
-The catalogue remains free. SetRoom Pro is presented at a founding price of **£29 per year**.
+- Browser-native 3D shelving with six-sided shelf boards and box cuboids
+- Slightly elevated front camera with rotate, zoom, front-view and reset controls
+- Real product artwork mapped onto each visible box front
+- Different box sizes based on stored dimensions
+- Front/back placement using shelf depth as well as width and height
+- Collision detection while adding, moving or rotating boxes
+- Automatic best-shelf recommendation with remaining width, depth and height
+- Direct box selection and drag-to-move interaction
+- Clear selected-box inspector for changing shelf, rotating or removing a box
+- Animated placement preview and success/error feedback
+- Responsive layout with simplified controls and bottom navigation on mobile
+- Local persistence through `localStorage`
 
-Eighteen annual customers at that price produce **£522 gross revenue** before payment fees, tax, refunds, customer acquisition, support and other costs. The product does not guarantee sales or profit.
+The visual system uses a clean white product canvas, purposeful primary colours, strong type hierarchy and small brick-inspired details. It does not imitate LEGO's site or branding pixel-for-pixel.
 
-## What is implemented
+## Existing product tools retained
 
-- Responsive marketing site and product tour
-- Free collection catalogue with real set box-image URLs
-- Owned, wishlist and sold states
-- Price paid, condition, acquisition date, notes and build progress
-- Shelf dimensions, placements, orientation-aware fit checks and auto-arrange
+- Collection catalogue with owned, wanted and sold states
+- Actual product-image URLs and custom-set placeholders
+- Purchase price, condition, dates, notes and build progress
 - Build timer, session history and optional browser camera recording
-- Sale fee, postage, packaging, net and profit calculations
-- Listing draft and photo checklist
-- Budget, theme and shelf-space purchase ranking
-- Avengers Tower profit goal dashboard
-- Local JSON export and import
-- Installable web-app manifest and offline shell
-- Seven-day local product trial
+- Selling fee, fulfilment, net proceeds and profit calculations
+- Listing draft and selling-photo checklist
+- Budget, theme and shelf-space purchase recommendations
+- JSON backup and restore
+- Seven-day local Pro trial
+- Installable web app and offline application shell
 
-## Run locally
-
-From this folder:
+## Run and validate locally
 
 ```bash
 python3 -m http.server 4173
 ```
 
-Then open `http://localhost:4173/`.
+Open `http://localhost:4173/#app/studio`.
 
-## Connect checkout
+Static checks:
 
-Edit `config.js`:
-
-```js
-window.SETROOM_CONFIG = {
-  annualPrice: '£29',
-  checkoutUrl: 'PASTE_CHECKOUT_URL_HERE',
-  supportEmail: 'you@example.com',
-  productName: 'SetRoom Pro'
-};
+```bash
+node --check app.js
+node --check shelf3d.js
+node --check data.js
+node --check sw.js
+node tests/smoke.js
 ```
 
-A Stripe Payment Link, Lemon Squeezy checkout or another hosted checkout can be used for the button. A static checkout link alone does **not** securely enforce paid access.
+## Product model
 
-For a real commercial launch, validate subscription or licence status through a small backend or payment-provider licence API. The local trial and `licensed` flag in this repository are product demonstrations, not secure entitlements.
+The collection and manual shelf experience are free. The current founding offer presents SetRoom Pro at **£29 per year** for auto-arrange, build replay, selling tools and purchase recommendations.
 
-## Data and privacy
+Eighteen annual customers at that price produce **£522 gross revenue** before payment fees, tax, refunds, acquisition, support and other costs. This is a commercial target, not a guarantee of sales or profit.
 
-Collection data is stored in browser `localStorage`. Camera access is requested only after the user presses **Start camera**. Recorded video is held in a temporary browser object URL and must be downloaded before the tab is closed or refreshed.
+## Checkout and paid access
 
-A production version should add accounts, cloud sync, privacy documentation, data-deletion controls and a secure entitlement service.
+Set `checkoutUrl` in `config.js` to a hosted Stripe, Lemon Squeezy or equivalent checkout.
 
-## Images and trademarks
+A checkout link alone cannot securely enforce paid access on GitHub Pages. A commercial release needs provider-backed licence validation or a small backend before unlocking Pro.
 
-Set image URLs currently point to Brickset-hosted images and are credited in the interface. Confirm that the chosen image/data source permits the intended commercial use before launch; a licensed catalogue API or your own authorised image pipeline is preferable for a paid product.
+## Data, images and trademarks
+
+Collection data is stored locally in the browser. Camera access begins only after the user explicitly starts it.
+
+Product artwork currently loads from Brickset-hosted URLs. Confirm the intended commercial usage rights or move to a licensed catalogue/image pipeline before charging customers.
 
 SetRoom is an independent fan-made collector tool. It is not affiliated with, endorsed by or sponsored by the LEGO Group. LEGO and related marks belong to their respective owner.
