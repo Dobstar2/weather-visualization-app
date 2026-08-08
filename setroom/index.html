@@ -3,101 +3,75 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#121211">
-  <meta name="description" content="SetRoom is a display-first LEGO collection workspace for planning shelves, recording builds, selling intelligently and choosing the right next set.">
-  <meta property="og:title" content="SetRoom — Your collection, without the guesswork">
-  <meta property="og:description" content="Know what you own, where it fits, what to build, what to sell and what deserves the next chunk of your budget.">
-  <title>SetRoom — Your collection, without the guesswork</title>
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="SetRoom helps LEGO collectors see which shelf a set fits, place the real box in a 3D room and keep the collection organised.">
+  <meta property="og:title" content="SetRoom — See where every LEGO box fits">
+  <meta property="og:description" content="Search a set, check the fit and place its real box artwork on your 3D shelf.">
+  <title>SetRoom — See where every LEGO box fits</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="upgrade.css">
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
 
-  <header class="marketing-header" id="marketing-header" data-marketing-header>
-    <a class="brand" href="#home" aria-label="SetRoom home"><span class="brand-mark">SR</span><span class="brand-word">SETROOM</span></a>
-    <nav aria-label="Main navigation">
-      <a href="#features">Features</a>
-      <a href="#pricing">Pricing</a>
-      <a href="#questions">Questions</a>
-    </nav>
-    <button class="button button-ink" type="button" data-action="open-app">Open workspace</button>
+  <header class="marketing-header" data-marketing-header>
+    <a class="brand" href="#home" aria-label="SetRoom home"><span class="brand-brick" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="brand-word">SetRoom</span></a>
+    <nav aria-label="Main navigation"><a href="#how">How it works</a><a href="#tools">Tools</a><a href="#pricing">Pricing</a></nav>
+    <button class="button button-primary" type="button" data-action="open-app">Open my shelf</button>
   </header>
 
   <main id="main">
     <div id="marketing-view">
-      <section class="hero" id="home">
-        <div class="hero-copy">
-          <p class="eyebrow"><span></span>A display-first LEGO collection workspace</p>
-          <h1>Know what you own.<br>Know where it goes.</h1>
-          <p class="hero-lead">SetRoom connects your collection to the shelves, build time and money decisions around it—before another oversized box reaches the front door.</p>
-          <div class="hero-actions">
-            <button class="button button-acid button-large" type="button" data-action="open-app">Open the sample room</button>
-            <button class="text-button" type="button" data-action="tour">Take the two-minute tour <span>↘</span></button>
-          </div>
-          <div class="hero-proof" aria-label="Product facts">
-            <div><strong>FREE</strong><span>collection catalogue</span></div>
-            <div><strong>4</strong><span>paid decision tools</span></div>
-            <div><strong>LOCAL</strong><span>browser-first data</span></div>
-          </div>
+      <section class="home-hero" id="home">
+        <div class="home-hero-copy">
+          <span class="hero-label">A 3D shelf planner for LEGO collectors</span>
+          <h1>See where every LEGO box fits.</h1>
+          <p>Search a set, preview the real box, then place and rearrange it on a shelf measured to your room.</p>
+          <div class="hero-actions"><button class="button button-primary button-large" type="button" data-action="open-app">Try the 3D shelf</button><a class="button button-secondary button-large" href="#how">See how it works</a></div>
+          <ol class="hero-steps"><li><b>1</b><span>Search a set</span></li><li><b>2</b><span>Check the fit</span></li><li><b>3</b><span>Place the box</span></li></ol>
         </div>
-        <div class="hero-product" aria-label="SetRoom product preview">
-          <div class="hero-note">DISPLAY PLAN / 04</div>
-          <div class="box-stack">
-            <figure class="box box-main"><img src="https://images.brickset.com/sets/images/76269-1.jpg" alt="LEGO Avengers Tower box"><figcaption><b>76269</b><span>Avengers Tower</span></figcaption></figure>
-            <figure class="box box-left"><img src="https://images.brickset.com/sets/images/10316-1.jpg" alt="LEGO Rivendell box"><figcaption><b>10316</b><span>Rivendell</span></figcaption></figure>
-            <figure class="box box-right"><img src="https://images.brickset.com/sets/images/10294-1.jpg" alt="LEGO Titanic box"><figcaption><b>10294</b><span>Titanic</span></figcaption></figure>
+        <div class="hero-shelf-demo" aria-label="Preview of a 3D shelf with LEGO box artwork">
+          <div class="demo-room-grid"></div>
+          <div class="demo-shelf">
+            <div class="demo-post demo-post-left"></div><div class="demo-post demo-post-right"></div>
+            <div class="demo-board demo-board-one"></div><div class="demo-board demo-board-two"></div><div class="demo-board demo-board-three"></div>
+            <figure class="demo-box demo-box-one"><img src="https://images.brickset.com/sets/images/76269-1.jpg" alt="Avengers Tower LEGO box"><figcaption>Avengers Tower</figcaption></figure>
+            <figure class="demo-box demo-box-two"><img src="https://images.brickset.com/sets/images/10316-1.jpg" alt="Rivendell LEGO box"><figcaption>Rivendell</figcaption></figure>
+            <figure class="demo-box demo-box-three"><img src="https://images.brickset.com/sets/images/10294-1.jpg" alt="Titanic LEGO box"><figcaption>Titanic</figcaption></figure>
           </div>
-          <div class="fit-ticket"><span>FIT CHECK</span><strong>TALL CORNER BAY</strong><small>Avengers Tower fits with 5 cm height clearance</small></div>
-          <div class="hero-grid-label">REAL BOX IMAGERY · PLANNER DIMENSIONS · ONE COLLECTION</div>
+          <div class="hero-fit-card"><span class="fit-dot"></span><div><b>Best fit: Shelf 2</b><small>5 cm height clearance</small></div></div>
+          <span class="hero-drag-note">Drag boxes to rearrange</span>
         </div>
       </section>
 
-      <section class="manifesto">
-        <span class="section-number">01</span>
-        <div class="manifesto-copy"><p>Most trackers stop at “you own this”.</p><h2>SetRoom starts where the spreadsheet gives up.</h2></div>
-        <p class="manifesto-side">It turns the collection into decisions you can act on: what fits, what to build, what to sell and what deserves the next chunk of your budget.</p>
-      </section>
-
-      <section class="feature-section" id="features">
-        <header class="section-heading"><div><span class="section-number">02</span><p class="eyebrow"><span></span>Four paid reasons to stay</p></div><h2>One collector profile.<br>Four useful jobs.</h2></header>
-        <div class="feature-grid">
-          <article class="feature-card feature-space"><span class="feature-index">01 / SPACE</span><div class="mini-shelf"><i style="--w:36%;--h:72%"></i><i style="--w:28%;--h:45%"></i><i style="--w:22%;--h:30%"></i></div><h3>Plan the display, not just the list.</h3><p>Measure shelves once, test normal and rotated fit, place sets to scale and auto-arrange the room.</p><strong>BrickSpace</strong></article>
-          <article class="feature-card feature-build"><span class="feature-index">02 / BUILD</span><div class="mini-timer"><b>03:42:18</b><span>67% COMPLETE</span></div><h3>Keep the story of every build.</h3><p>Time sessions, track progress and record a private camera replay in the browser.</p><strong>BuildReplay</strong></article>
-          <article class="feature-card feature-sell"><span class="feature-index">03 / SELL</span><div class="mini-profit"><span>BUYER PAYS £180</span><b>£52.40 PROFIT</b><small>after fees + fulfilment</small></div><h3>Count money that reaches the bank.</h3><p>Calculate net proceeds, prepare a photo checklist, generate a listing and move profit into a goal.</p><strong>BrickExit</strong></article>
-          <article class="feature-card feature-buy"><span class="feature-index">04 / BUY</span><div class="mini-match"><b>91</b><span>MATCH</span><small>fits · under budget · theme match</small></div><h3>Stop buying the wrong next box.</h3><p>Rank sets against budget, taste, current collection and the shelf space you actually have.</p><strong>BrickBrain</strong></article>
+      <section class="how-section" id="how">
+        <header class="marketing-section-head"><span>HOW IT WORKS</span><h2>From search to shelf in seconds.</h2><p>No setup maze. The first useful action is always visible.</p></header>
+        <div class="how-flow">
+          <article><span class="step-number">01</span><div class="how-search-mock"><span>⌕</span><b>76269</b><small>Avengers Tower</small></div><h3>Find the set</h3><p>Search by name, number or theme and see the actual product artwork.</p></article>
+          <article><span class="step-number">02</span><div class="how-fit-mock"><i></i><div><b>Fits Shelf 2</b><small>Width · depth · height checked</small></div></div><h3>Know it fits</h3><p>SetRoom checks all three dimensions and recommends the best open space.</p></article>
+          <article><span class="step-number">03</span><div class="how-place-mock"><img src="https://images.brickset.com/sets/images/10316-1.jpg" alt="Rivendell box preview"><span>Placed</span></div><h3>Arrange in 3D</h3><p>Rotate the view, select a box and drag it to the exact position you want.</p></article>
         </div>
       </section>
 
-      <section class="workflow-section">
-        <div class="workflow-copy"><span class="section-number">03</span><p class="eyebrow"><span></span>A product people can understand</p><h2>The free tool earns trust.<br>The decisions earn the subscription.</h2><p>Collection logging creates the habit. Pro appears when a collector asks a high-value question: “Will it fit?”, “What will I actually make?”, or “What should I buy next?”</p></div>
-        <ol class="workflow-list"><li><span>01</span><div><strong>LOG</strong><p>Owned, wanted and sold sets with imagery, spend, condition and progress.</p></div></li><li><span>02</span><div><strong>MEASURE</strong><p>Real shelf width, depth and height—then automatic placement.</p></div></li><li><span>03</span><div><strong>DECIDE</strong><p>Build, sell and buy with the entire collection in context.</p></div></li><li><span>04</span><div><strong>RETURN</strong><p>Every set, shelf, build and sale makes the workspace more useful.</p></div></li></ol>
+      <section class="product-story" id="tools">
+        <div class="product-story-copy"><span>ONE COLLECTION, FOUR USEFUL TOOLS</span><h2>The shelf is the centre. Everything else supports it.</h2><p>Keep the collection tidy, record build sessions, understand real sale profit and decide what deserves the next space in the room.</p><button class="button button-primary" type="button" data-action="open-app">Open the workspace</button></div>
+        <div class="tool-list"><article><b>Shelf</b><span>Fit checks and 3D placement</span></article><article><b>Collection</b><span>Owned, wanted and sold sets</span></article><article><b>Build</b><span>Timers and private replay</span></article><article><b>Sell</b><span>Fees, net proceeds and profit</span></article><article><b>Buy</b><span>Budget and space recommendations</span></article></div>
       </section>
 
       <section class="pricing-section" id="pricing">
-        <header class="section-heading"><div><span class="section-number">04</span><p class="eyebrow"><span></span>Straightforward pricing</p></div><h2>Catalogue for free.<br>Decisions in Pro.</h2></header>
-        <div class="pricing-grid">
-          <article class="price-card"><span class="price-plan">FREE</span><div class="price"><strong>£0</strong><span>forever</span></div><p>For building a clean, useful record of the collection.</p><ul><li>Unlimited owned sets and wishlist</li><li>Real set imagery and fast search</li><li>Progress, condition, spend and notes</li><li>Backup and restore</li></ul><button class="button button-outline" type="button" data-action="open-app">Start cataloguing</button></article>
-          <article class="price-card price-card-pro"><div class="price-ribbon">FOUNDING PRICE</div><span class="price-plan">PRO</span><div class="price"><strong>£29</strong><span>per year</span></div><p>For collectors who need the collection to answer expensive questions.</p><ul><li>To-scale shelves and automatic layouts</li><li>Fit checks before a purchase</li><li>Build timers and camera replays</li><li>Net-profit selling workflow</li><li>Budget-and-space recommendations</li></ul><button class="button button-acid" type="button" data-action="start-trial" data-route="space">Start 7-day trial</button><small>No card for the browser trial. Connect checkout before selling access.</small></article>
-        </div>
-        <div class="revenue-strip"><span>OPERATION AVENGERS TOWER</span><strong>18 founding members × £29 = £522 gross</strong><small>Payment fees and taxes are not included.</small></div>
-      </section>
-
-      <section class="faq-section" id="questions">
-        <header><span class="section-number">05</span><h2>Before the first shelf.</h2></header>
-        <div class="faq-list">
-          <details><summary>Is SetRoom an official LEGO product?</summary><p>No. SetRoom is an independent, unofficial fan-made collector tool. LEGO and related marks belong to the LEGO Group.</p></details>
-          <details><summary>Are prices and dimensions guaranteed?</summary><p>No. The built-in catalogue is planning data. Confirm dimensions, contents and current prices from the box or retailer before buying, building or selling.</p></details>
-          <details><summary>Where is collection data stored?</summary><p>This static release stores data locally in the browser. Export a backup before clearing site data or changing devices. A commercial version should add accounts and cloud sync.</p></details>
-          <details><summary>Can a GitHub Pages paywall be secure?</summary><p>Not by itself. The included product experience has a checkout hook and local trial. Real entitlement enforcement needs a payment provider plus a small backend or licence service.</p></details>
+        <header class="marketing-section-head"><span>PRICING</span><h2>Start with the shelf. Upgrade for smarter decisions.</h2></header>
+        <div class="pricing-grid-new">
+          <article><span>FREE</span><strong>£0</strong><p>Build a collection and place boxes on measured shelves.</p><ul><li>Collection catalogue</li><li>Real box artwork</li><li>Basic 3D placement</li><li>Local backup</li></ul><button class="button button-secondary" type="button" data-action="open-app">Start free</button></article>
+          <article class="featured-price"><span>PRO · FOUNDING PRICE</span><strong>£29<small>/year</small></strong><p>For collectors making expensive space, build, sale and purchase decisions.</p><ul><li>Smart auto-arrange</li><li>Build replay</li><li>Sale profit workflow</li><li>Budget-and-space recommendations</li></ul><button class="button button-primary" type="button" data-action="start-trial" data-route-after="studio">Start 7-day trial</button></article>
         </div>
       </section>
 
       <footer class="marketing-footer">
-        <div><a class="brand brand-light" href="#home"><span class="brand-mark">SR</span><span class="brand-word">SETROOM</span></a><p>Your collection, without the guesswork.</p></div>
-        <div class="footer-links"><button type="button" data-action="open-app">Open app</button><button type="button" data-action="privacy">Privacy</button><button type="button" data-action="terms">Terms</button><a href="https://brickset.com" rel="noreferrer">Image source</a></div>
-        <p class="legal-line">Set imagery is loaded from Brickset.com. SetRoom is independent and is not affiliated with, endorsed by or sponsored by the LEGO Group.</p>
+        <div><a class="brand" href="#home"><span class="brand-brick" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="brand-word">SetRoom</span></a><p>See where every box fits.</p></div>
+        <div class="footer-links"><button type="button" data-action="open-app">Open app</button><button type="button" data-action="privacy">Privacy</button><button type="button" data-action="terms">Terms</button><a href="https://brickset.com" rel="noreferrer">Artwork source</a></div>
+        <p class="legal-line">SetRoom is an independent fan-made collector tool and is not affiliated with, endorsed by or sponsored by the LEGO Group. Product artwork is loaded from Brickset.</p>
       </footer>
     </div>
 
@@ -110,6 +84,7 @@
 
   <script src="config.js"></script>
   <script src="data.js"></script>
+  <script src="shelf3d.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

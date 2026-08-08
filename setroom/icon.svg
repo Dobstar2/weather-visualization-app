@@ -1,1 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="82" fill="#121211"/><path d="M76 76h360v360H76z" fill="#d9ff43"/><path d="M135 170c0-48 39-82 97-82 45 0 80 17 103 49l-50 37c-12-18-29-27-52-27-21 0-34 9-34 23 0 17 17 23 53 32 64 15 97 40 97 93 0 61-51 98-120 98-57 0-98-23-123-61l53-37c15 25 38 38 71 38 28 0 45-11 45-28 0-17-15-24-51-32-67-16-100-43-100-103z" fill="#121211"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="SetRoom">
+  <rect width="512" height="512" rx="92" fill="#fff"/>
+  <rect x="58" y="120" width="396" height="314" rx="46" fill="#d71920"/>
+  <g fill="#ffd500">
+    <circle cx="142" cy="118" r="52"/><circle cx="256" cy="118" r="52"/><circle cx="370" cy="118" r="52"/>
+  </g>
+  <path d="M116 214h280M116 318h280" fill="none" stroke="#fff" stroke-width="30" stroke-linecap="round"/>
+  <rect x="128" y="166" width="82" height="48" rx="8" fill="#1265b0"/>
+  <rect x="230" y="251" width="118" height="67" rx="8" fill="#ffd500"/>
+  <rect x="139" y="351" width="153" height="55" rx="8" fill="#111"/>
+</svg>
